@@ -60,7 +60,6 @@ train = [
     "tyro",
     "scipy",
     "pexpect",
-    "",
 ]
 
 [project.urls]
