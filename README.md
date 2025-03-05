@@ -108,7 +108,7 @@ cd LLaVA-NeXT
 #### 2. **Install the inference package:**
 ```bash
 conda create -n llava-next python=3.10 -y
-conda activate llava-next
+source activate llava-next
 pip install --upgrade pip  # Enable PEP 660 support.
 pip install -e ".[train]"
 ```
