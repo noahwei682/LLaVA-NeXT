@@ -60,6 +60,7 @@ train = [
     "tyro",
     "scipy",
     "pexpect",
+    "flash-attn"
 ]
 
 [project.urls]
