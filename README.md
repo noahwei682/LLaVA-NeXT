@@ -101,7 +101,7 @@
 
 #### 1. **Clone this repository and navigate to the LLaVA folder:**
 ```bash
-git clone https://github.com/LLaVA-VL/LLaVA-NeXT
+git clone https://github.com/noahwei682/LLaVA-NeXT.git
 cd LLaVA-NeXT
 ```
 
