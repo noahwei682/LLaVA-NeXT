@@ -1,7 +1,7 @@
 export OMP_NUM_THREADS=8
 export NCCL_IB_DISABLE=0
 export NCCL_IB_GID_INDEX=3
-export NCCL_SOCKET_IFNAME=eth0
+export NCCL_SOCKET_IFNAME=enp6s0
 export NCCL_DEBUG=INFO
 
 LLM_VERSION="lmms-lab/llava-onevision-qwen2-7b-ov " 
