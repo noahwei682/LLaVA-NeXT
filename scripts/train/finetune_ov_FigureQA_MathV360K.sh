@@ -1,7 +1,7 @@
 export OMP_NUM_THREADS=8
 export NCCL_IB_DISABLE=0
 export NCCL_IB_GID_INDEX=3
-export NCCL_SOCKET_IFNAME=enp6s0
+export NCCL_SOCKET_IFNAME=br-intranet
 export NCCL_DEBUG=INFO
 
 LLM_VERSION="lmms-lab/llava-onevision-qwen2-7b-ov " 
@@ -29,7 +29,7 @@ PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-ov" # replace it with y
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${RUN_NAME}"
 
-ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node 5 --nnodes 1 --node_rank 0 --master_addr 192.168.101.60 --master_port 23456 \
+ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node 5 --nnodes 1 --node_rank 0 --master_addr 172.17.100.112 --master_port 23456 \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
     --model_name_or_path $PREV_STAGE_CHECKPOINT \
