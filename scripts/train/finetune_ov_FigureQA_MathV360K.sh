@@ -29,14 +29,13 @@ PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-ov" # replace it with y
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${RUN_NAME}"
 
-ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node 5 --nnodes 1 --node_rank 0 --master_addr 172.17.100.112 --master_port 23456 \
+ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 172.17.100.112 --master_port 23456 \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
     --model_name_or_path $PREV_STAGE_CHECKPOINT \
     --version $PROMPT_VERSION \
-    --data_path /home/rent_user/mydatasets/llava_onevision/llava_onevision_FigureQA_MathV360K.json \
-    --image_folder /home/rent_user/mydatasets/llava_onevision/images/FigureQA_MathV360K \
-    --video_folder /mnt/bn/vl-research/data/llava_video \
+    --data_path ./download_data/mydatasets/llava_onevision/llava_onevision_FigureQA_MathV360K.json \
+    --image_folder ./download_data/mydatasets/llava_onevision/images/FigureQA_MathV360K \
     --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
     --mm_vision_tower_lr=2e-6 \
     --vision_tower ${VISION_MODEL_VERSION} \
@@ -77,3 +76,4 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node 5 --nnodes 1 --node_rank 0 -
 exit 0;
 
 # You can delete the sdpa attn_implementation if you want to use flash attn
+#     --video_folder /mnt/bn/vl-research/data/llava_video \
