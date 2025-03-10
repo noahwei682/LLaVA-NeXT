@@ -1,21 +1,15 @@
-export OMP_NUM_THREADS=8
-export NCCL_IB_DISABLE=0
-export NCCL_IB_GID_INDEX=3
-export NCCL_SOCKET_IFNAME=br-intranet
-export NCCL_DEBUG=INFO
+# export OMP_NUM_THREADS=8
+# export NCCL_IB_DISABLE=0
+# export NCCL_IB_GID_INDEX=3
+# export NCCL_SOCKET_IFNAME=br-intranet
+# export NCCL_DEBUG=INFO
 
-export ACCELERATE_CPU_AFFINITY=1 
-export NPROC_PER_NODE=8 
-export NODES=1 
-export NODE_RANK=0 
-export MASTER_ADDR=172.17.100.112 
-export MASTER_PORT=23456 
-
-
-
-
-ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 172.17.100.112 --master_port 23456 \
-
+# export ACCELERATE_CPU_AFFINITY=1 
+# export NPROC_PER_NODE=8 
+# export NODES=1 
+# export NODE_RANK=0 
+# export MASTER_ADDR=172.17.100.112 
+# export MASTER_PORT=23456 
 
 
 LLM_VERSION="lmms-lab/llava-onevision-qwen2-7b-ov " 
@@ -64,7 +58,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node $NPROC_PER_NODE --nnodes $NO
     --mm_patch_merge_type spatial_unpad \
     --bf16 True \
     --run_name $RUN_NAME \
-    --output_dir /mnt/bn/vl-research/checkpoints/onevision/$RUN_NAME \
+    --output_dir ./output_dir/checkpoints/onevision/$RUN_NAME \
     --num_train_epochs 1 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 4 \
