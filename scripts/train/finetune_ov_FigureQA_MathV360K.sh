@@ -4,6 +4,20 @@ export NCCL_IB_GID_INDEX=3
 export NCCL_SOCKET_IFNAME=br-intranet
 export NCCL_DEBUG=INFO
 
+export ACCELERATE_CPU_AFFINITY=1 
+export NPROC_PER_NODE=8 
+export NODES=1 
+export NODE_RANK=0 
+export MASTER_ADDR=172.17.100.112 
+export MASTER_PORT=23456 
+
+
+
+
+ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 172.17.100.112 --master_port 23456 \
+
+
+
 LLM_VERSION="lmms-lab/llava-onevision-qwen2-7b-ov " 
 # for 7b model we recommend bs=1, accum=2, 16 nodes, 128 gpus, lr=1e-5, warmup=0.03
 # for 72b model we recommend bs=1, accum=1, 32 nodes, 256 gpus, lr=1e-5, warmup=0.03
@@ -29,7 +43,8 @@ PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-ov" # replace it with y
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${RUN_NAME}"
 
-ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 172.17.100.112 --master_port 23456 \
+# ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node 8 --nnodes 1 --node_rank 0 --master_addr 172.17.100.112 --master_port 23456 \
+ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node $NPROC_PER_NODE --nnodes $NODES --node_rank $NODE_RANK --master_addr $MASTER_ADDR --master_port $MASTER_PORT \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
     --model_name_or_path $PREV_STAGE_CHECKPOINT \
