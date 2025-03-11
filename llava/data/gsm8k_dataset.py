@@ -29,7 +29,7 @@ class GSM8KDataset(Dataset):
     def __init__(
         self,
         tokenizer,
-        data_path: str = "modelscope/gsm8k",
+        data_path: str = "openai/gsm8k",
         split: str = "train",
         max_length: int = 2048,
     ):
@@ -38,12 +38,49 @@ class GSM8KDataset(Dataset):
         self.tokenizer = tokenizer
         self.max_length = max_length
         
-        # Load GSM8K dataset
-        self.dataset = load_dataset(data_path, split=split)
+        # Load GSM8K dataset with 'main' config
+        self.dataset = load_dataset(data_path, 'main', split=split)
         
+        # Pre-compute lengths for each sample
+        self.lengths = []
+        for i in range(len(self.dataset)):
+            item = self.dataset[i]
+            question = item["question"]
+            answer = item["answer"]
+            
+            # Format messages in conversation format
+            messages = [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": "数字10203040里面有几个0?"},
+                {"role": "assistant", "content": XML_COT_FORMAT.format(
+                    reasoning="可以将数字拆开看，1、0、2、0、3、0、4、0，我们可以数出有4个0",
+                    answer="4"
+                )},
+                {"role": "user", "content": question},
+                {"role": "assistant", "content": XML_COT_FORMAT.format(
+                    reasoning=answer.split("####")[0].strip(),
+                    answer=answer.split("####")[-1].strip()
+                )}
+            ]
+            
+            # Convert messages to prompt
+            prompt = ""
+            for msg in messages:
+                if msg["role"] == "system":
+                    prompt += f"{msg['content']}\n"
+                elif msg["role"] == "user":
+                    prompt += f"User: {msg['content']}\n"
+                else:  # assistant
+                    prompt += f"Assistant: {msg['content']}\n"
+            
+            # Get length of tokenized prompt
+            length = len(self.tokenizer(prompt, truncation=False)["input_ids"])
+            self.lengths.append(length)
+
+
     def __len__(self):
         return len(self.dataset)
-        
+
     def __getitem__(self, index) -> Dict:
         item = self.dataset[index]
         question = item["question"]
@@ -80,17 +117,17 @@ class GSM8KDataset(Dataset):
                 prompt += f"Assistant: {msg['content']}\n"
         
         # Tokenize
-        prompt_tokens = self.tokenizer(
+        tokenized = self.tokenizer(
             prompt,
-            return_tensors="pt",
             max_length=self.max_length,
             padding="max_length",
             truncation=True,
+            return_tensors=None,  # Return python lists instead of tensors
         )
         
-        # Create input_ids and labels
-        input_ids = prompt_tokens["input_ids"][0]
-        attention_mask = prompt_tokens["attention_mask"][0]
+        # Convert to tensors
+        input_ids = torch.tensor(tokenized["input_ids"], dtype=torch.long)
+        attention_mask = torch.tensor(tokenized["attention_mask"], dtype=torch.long)
         
         # For training, we want the model to predict the entire sequence
         labels = input_ids.clone()
