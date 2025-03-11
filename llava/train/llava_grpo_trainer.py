@@ -14,8 +14,25 @@ class LLaVAGRPOTrainer(LLaVATrainer, GRPOTrainer):
     """
     
     def __init__(self, grpo_config: GRPOConfig = None, **kwargs):
-        super().__init__(**kwargs)
+        # Store GRPO config first
         self.grpo_config = grpo_config or GRPOConfig()
+        
+        # Remove grpo_config from kwargs to avoid passing it to parent classes
+        kwargs_without_grpo = {k: v for k, v in kwargs.items() if k != 'grpo_config'}
+        
+        # Initialize parent classes
+        LLaVATrainer.__init__(self, **kwargs_without_grpo)
+        
+        # Store model config
+        if hasattr(kwargs.get('model', None), 'config'):
+            self.config = kwargs['model'].config
+            # Add GRPO-specific attributes to model config
+            for key, value in vars(self.grpo_config).items():
+                setattr(self.config, key, value)
+        
+        # Initialize other necessary attributes
+        self.use_dpo_data_collator = False
+        
         
     def compute_loss(self, model, inputs, return_outputs=False):
         """
@@ -30,12 +47,13 @@ class LLaVAGRPOTrainer(LLaVATrainer, GRPOTrainer):
         loss = outputs.loss
         
         # Extract logits and values for Group RPO
-        logits = outputs.logits
+        logits = outputs.logits  # [batch_size, seq_len, vocab_size]
         if hasattr(outputs, "value"):
             values = outputs.value
         else:
-            # For GSM8K, we can use loss as a proxy for value
-            values = -loss.detach().unsqueeze(-1).expand(-1, logits.shape[1])
+            # For GSM8K, we use negative loss as value for each token
+            # Reshape loss to [batch_size, 1] and expand to [batch_size, seq_len]
+            values = -loss.detach().view(-1, 1).expand(-1, logits.shape[1])
             
         # Create groups for relative optimization
         batch_size = logits.shape[0]
@@ -61,26 +79,55 @@ class LLaVAGRPOTrainer(LLaVATrainer, GRPOTrainer):
             sorted_indices = torch.argsort(seq_lengths)
             group_indices = group_indices[sorted_indices]
         
-        # Compute group-based advantages and loss
-        advantages = self.compute_group_advantages(
-            values, 
-            loss.detach(),  # Use loss as reward signal
-            inputs.get("attention_mask", torch.ones_like(values)),
-            group_indices
-        )
+        # Create attention mask if not provided
+        attention_mask = inputs.get("attention_mask", torch.ones((batch_size, logits.shape[1]), device=logits.device))
         
-        # Get log probabilities
-        log_probs = torch.log_softmax(logits, dim=-1)
-        old_log_probs = log_probs.detach()
+        # Get log probabilities for each token
+        log_probs = torch.log_softmax(logits, dim=-1)  # [batch_size, seq_len, vocab_size]
+        
+        # Get the log probabilities of the actual tokens
+        labels = inputs["labels"]  # [batch_size, seq_len]
+        labels_mask = (labels != -100)  # Create mask for valid tokens
+        
+        # Gather the log probabilities of the actual tokens
+        token_log_probs = torch.gather(log_probs, -1, labels.unsqueeze(-1).expand(-1, -1, 1).clamp(min=0)).squeeze(-1)
+        token_log_probs = token_log_probs * labels_mask  # Zero out invalid positions
+        
+        # Compute advantages
+        rewards = -loss.detach()  # Use negative loss as reward [batch_size]
+        if values.dim() == 2:
+            values_mean = values.mean(dim=1)  # [batch_size]
+        else:
+            values_mean = values.mean()  # scalar
+            
+        # Reshape rewards and values for broadcasting
+        rewards = rewards.view(-1)  # [batch_size]
+        values_mean = values_mean.view(-1)  # [batch_size]
+        advantages = (rewards - values_mean).unsqueeze(1)  # [batch_size, 1]
+        
+        # Ensure all tensors are on the same device and have the same dtype
+        device = logits.device
+        dtype = logits.dtype
+        
+        # Convert tensors to the correct device and dtype
+        token_log_probs = token_log_probs.to(device=device, dtype=dtype)
+        values = values.to(device=device, dtype=dtype)
+        advantages = advantages.expand(-1, logits.shape[1]).to(device=device, dtype=dtype)  # [batch_size, seq_len]
+        attention_mask = attention_mask.to(device=device, dtype=dtype)
+        
+        # Create clipping tensors for PPO
+        eps = self.grpo_config.group_margin
+        self.clip_range = torch.tensor(eps, device=device, dtype=dtype)
+        self.clip_range_value = torch.tensor(eps, device=device, dtype=dtype)
         
         # Compute group RPO loss
         grpo_loss, stats = self.compute_group_loss(
-            log_probs,
+            token_log_probs,
             values,
-            old_log_probs,
+            token_log_probs.detach(),  # Use current log probs as old log probs
             advantages,
             group_indices,
-            inputs.get("attention_mask", torch.ones_like(log_probs))
+            attention_mask
         )
         
         # For GSM8K, we want to emphasize the final answer tokens more
@@ -89,7 +136,7 @@ class LLaVAGRPOTrainer(LLaVATrainer, GRPOTrainer):
             grpo_loss = grpo_loss * (1 + (final_answer_weight - 1) * inputs["final_answer_mask"])
         
         # Combine losses
-        total_loss = loss + self.grpo_config.group_weight * grpo_loss
+        total_loss = loss + self.grpo_config.group_weight * grpo_loss.mean()
         
         if return_outputs:
             outputs.loss = total_loss
