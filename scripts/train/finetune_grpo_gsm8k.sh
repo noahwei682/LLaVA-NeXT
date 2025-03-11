@@ -41,7 +41,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node $NPROC_PER_NODE --nnodes $NO
     --deepspeed scripts/zero3.json \
     --model_name_or_path $PREV_STAGE_CHECKPOINT \
     --version $PROMPT_VERSION \
-    --dataset_name "modelscope/gsm8k" \
+    --dataset_name "openai/gsm8k" \
     --dataset_config "main" \
     --bf16 True \
     --run_name $RUN_NAME \
