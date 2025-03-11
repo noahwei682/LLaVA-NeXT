@@ -45,7 +45,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node $NPROC_PER_NODE --nnodes $NO
     --dataset_config "main" \
     --bf16 True \
     --run_name $RUN_NAME \
-    --output_dir checkpoints/$RUN_NAME \
+    --output_dir ./output_dir/checkpoints/onevision/$RUN_NAME \
     --num_train_epochs 3 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 4 \
