@@ -73,9 +73,17 @@ class GRPOTrainer(PPOTrainer):
         """
         # Standard PPO losses
         pg_loss, vf_loss, stats = super().loss(
-            old_logprobs, values, None, None, 
-            logprobs, mask, advantages, None
+            old_logprobs,
+            values,
+            logprobs,  # Use logprobs as logits since we don't need actual logits for PPO
+            values,    # Use values as vpreds since they are the same
+            logprobs,
+            mask,
+            advantages,
+            advantages + values  # Compute returns as advantages + values
         )
+
+
 
         # Group relative loss
         group_loss = torch.tensor(0.0, device=logprobs.device)
